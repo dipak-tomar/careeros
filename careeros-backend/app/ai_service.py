@@ -1,11 +1,65 @@
 import google.generativeai as genai
 import json
 import re
-from typing import Optional, List, Tuple
+from typing import Optional, List, Tuple, Dict
 from app.config import get_settings
 from app.schemas import AchievementCreate
 
 settings = get_settings()
+
+
+PROFILE_EXTRACTION_PROMPT = """You are an expert resume parser. Extract profile information from the following resume text.
+
+Extract the following fields if present:
+- name: Full name of the person
+- email: Email address
+- phone: Phone number
+- location: City, State or full address
+- linkedin: LinkedIn URL or profile
+- website: Personal website or portfolio URL
+- summary: A professional summary (generate one if not present based on their experience)
+- target_roles: List of job titles they seem to be targeting based on their experience
+
+Respond in this exact JSON format:
+{
+  "name": "extracted name or null",
+  "email": "extracted email or null",
+  "phone": "extracted phone or null",
+  "location": "extracted location or null",
+  "linkedin": "extracted linkedin or null",
+  "website": "extracted website or null",
+  "summary": "extracted or generated summary",
+  "target_roles": ["role1", "role2"]
+}
+
+RESUME TEXT:
+"""
+
+
+async def extract_profile_from_resume(resume_text: str) -> Dict:
+    """Extract profile information from resume text using AI."""
+    if not configure_gemini():
+        return {
+            "error": "AI features require a Gemini API key. Please configure GEMINI_API_KEY."
+        }
+    
+    model = genai.GenerativeModel('gemini-2.0-flash')
+    
+    prompt = PROFILE_EXTRACTION_PROMPT + resume_text
+    
+    response = model.generate_content(prompt)
+    response_text = response.text
+    
+    json_match = re.search(r'\{.*\}', response_text, re.DOTALL)
+    if json_match:
+        try:
+            return json.loads(json_match.group(0))
+        except json.JSONDecodeError:
+            pass
+    
+    return {
+        "error": "Unable to extract profile information. Please try again."
+    }
 
 
 def configure_gemini():

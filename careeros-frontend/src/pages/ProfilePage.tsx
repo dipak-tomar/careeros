@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { api, Profile } from '@/lib/api';
+import { api, Profile, ExtractedProfile } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -11,9 +11,11 @@ import { X } from 'lucide-react';
 interface ProfilePageProps {
   profile: Profile | null;
   onUpdate: () => void;
+  importedData?: ExtractedProfile | null;
+  onImportComplete?: () => void;
 }
 
-export function ProfilePage({ profile, onUpdate }: ProfilePageProps) {
+export function ProfilePage({ profile, onUpdate, importedData, onImportComplete }: ProfilePageProps) {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -49,6 +51,26 @@ export function ProfilePage({ profile, onUpdate }: ProfilePageProps) {
       });
     }
   }, [profile]);
+
+  useEffect(() => {
+    if (importedData) {
+      setFormData(prev => ({
+        ...prev,
+        name: importedData.name || prev.name,
+        email: importedData.email || prev.email,
+        phone: importedData.phone || prev.phone,
+        location: importedData.location || prev.location,
+        linkedin: importedData.linkedin || prev.linkedin,
+        website: importedData.website || prev.website,
+        summary: importedData.summary || prev.summary,
+        target_roles: importedData.target_roles?.length ? importedData.target_roles : prev.target_roles,
+      }));
+      setMessage('Profile data imported from resume! Review and save your changes.');
+      if (onImportComplete) {
+        onImportComplete();
+      }
+    }
+  }, [importedData, onImportComplete]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

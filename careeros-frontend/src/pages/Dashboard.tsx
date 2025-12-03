@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { api, Profile, Achievement, Application } from '@/lib/api';
+import { api, Profile, Achievement, Application, ExtractedProfile } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -18,6 +18,12 @@ export function Dashboard() {
   const [achievements, setAchievements] = useState<Achievement[]>([]);
   const [applications, setApplications] = useState<Application[]>([]);
   const [activeTab, setActiveTab] = useState('profile');
+  const [importedProfileData, setImportedProfileData] = useState<ExtractedProfile | null>(null);
+
+  const handleImportToProfile = (extractedData: ExtractedProfile) => {
+    setImportedProfileData(extractedData);
+    setActiveTab('profile');
+  };
 
   useEffect(() => {
     loadData();
@@ -117,7 +123,12 @@ export function Dashboard() {
           </TabsList>
 
           <TabsContent value="profile">
-            <ProfilePage profile={profile} onUpdate={loadData} />
+            <ProfilePage 
+              profile={profile} 
+              onUpdate={loadData} 
+              importedData={importedProfileData}
+              onImportComplete={() => setImportedProfileData(null)}
+            />
           </TabsContent>
           <TabsContent value="achievements">
             <AchievementsPage achievements={achievements} onUpdate={loadData} />
@@ -126,7 +137,7 @@ export function Dashboard() {
             <InterviewerPage onAchievementAdded={loadData} />
           </TabsContent>
           <TabsContent value="ats">
-            <ATSSimulatorPage />
+            <ATSSimulatorPage onImportToProfile={handleImportToProfile} />
           </TabsContent>
           <TabsContent value="tailor">
             <TailorPage achievements={achievements} />

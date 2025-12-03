@@ -1,7 +1,9 @@
 import { useState, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Upload, FileText, AlertCircle, CheckCircle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Upload, FileText, AlertCircle, CheckCircle, UserPlus, Loader2 } from 'lucide-react';
 import * as pdfjsLib from 'pdfjs-dist';
+import { api, ExtractedProfile } from '@/lib/api';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
   'pdfjs-dist/build/pdf.worker.min.mjs',
@@ -13,13 +15,46 @@ interface ATSIssue {
   message: string;
 }
 
-export function ATSSimulatorPage() {
+interface ATSSimulatorPageProps {
+  onImportToProfile?: (extractedData: ExtractedProfile) => void;
+}
+
+export function ATSSimulatorPage({ onImportToProfile }: ATSSimulatorPageProps) {
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [extractedText, setExtractedText] = useState<string>('');
   const [issues, setIssues] = useState<ATSIssue[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isExtracting, setIsExtracting] = useState(false);
+  const [extractionMessage, setExtractionMessage] = useState<string>('');
   const [fileName, setFileName] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleImportToProfile = async () => {
+    if (!extractedText || extractedText.length < 100) {
+      setExtractionMessage('Please upload a resume first');
+      return;
+    }
+
+    setIsExtracting(true);
+    setExtractionMessage('');
+
+    try {
+      const result = await api.resume.extractProfile(extractedText);
+      
+      if (result.error) {
+        setExtractionMessage(result.error);
+      } else {
+        setExtractionMessage('Profile data extracted! Redirecting to profile...');
+        if (onImportToProfile) {
+          onImportToProfile(result);
+        }
+      }
+    } catch (error) {
+      setExtractionMessage('Failed to extract profile data. Please try again.');
+    } finally {
+      setIsExtracting(false);
+    }
+  };
 
   const analyzeText = (text: string): ATSIssue[] => {
     const issues: ATSIssue[] = [];
@@ -227,6 +262,46 @@ export function ATSSimulatorPage() {
                   <span className="text-sm">{issue.message}</span>
                 </div>
               ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {extractedText && extractedText.length > 100 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <UserPlus className="w-5 h-5" />
+              Import to Master Profile
+            </CardTitle>
+            <CardDescription>
+              Use AI to extract your profile information from this resume and populate your Master Profile
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <Button 
+                onClick={handleImportToProfile} 
+                disabled={isExtracting}
+                className="w-full"
+              >
+                {isExtracting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Extracting profile data...
+                  </>
+                ) : (
+                  <>
+                    <UserPlus className="w-4 h-4 mr-2" />
+                    Import Resume to Master Profile
+                  </>
+                )}
+              </Button>
+              {extractionMessage && (
+                <p className={`text-sm ${extractionMessage.includes('error') || extractionMessage.includes('Failed') ? 'text-red-600' : 'text-green-600'}`}>
+                  {extractionMessage}
+                </p>
+              )}
             </div>
           </CardContent>
         </Card>

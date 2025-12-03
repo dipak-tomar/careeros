@@ -11,10 +11,11 @@ from app.schemas import (
     ProfileCreate, ProfileUpdate, ProfileResponse,
     AchievementCreate, AchievementUpdate, AchievementResponse,
     ApplicationCreate, ApplicationUpdate, ApplicationResponse,
-    ChatRequest, ChatResponse, TailorRequest, TailorResponse
+    ChatRequest, ChatResponse, TailorRequest, TailorResponse,
+    ResumeExtractRequest, ResumeExtractResponse
 )
 from app.database import get_db, dict_from_row
-from app.ai_service import chat_with_interviewer, tailor_resume
+from app.ai_service import chat_with_interviewer, tailor_resume, extract_profile_from_resume
 from app.config import get_settings
 
 settings = get_settings()
@@ -539,3 +540,13 @@ async def tailor(
     result = await tailor_resume(request.job_description, profile or {}, achievements)
     
     return TailorResponse(**result)
+
+
+@router.post("/extract-profile", response_model=ResumeExtractResponse)
+async def extract_profile(
+    request: ResumeExtractRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """Extract profile information from resume text using AI."""
+    result = await extract_profile_from_resume(request.resume_text)
+    return ResumeExtractResponse(**result)
