@@ -4,11 +4,13 @@ import os
 
 
 class Settings(BaseSettings):
-    SECRET_KEY: str = os.environ.get("SECRET_KEY", "your-secret-key-change-in-production")
+    SECRET_KEY: str = "your-secret-key-change-in-production"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # 7 days
     DATABASE_URL: str = "sqlite+aiosqlite:///./careeros.db"
-    GEMINI_API_KEY: str = os.environ.get("GEMINI_API_KEY", "")
+    GEMINI_API_KEY: str = ""
+    TURSO_URL: str = ""
+    TURSO_AUTH_TOKEN: str = ""
 
     class Config:
         env_file = ".env"

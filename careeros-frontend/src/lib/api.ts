@@ -90,6 +90,14 @@ export const api = {
         body: { job_description },
       }),
   },
+  
+  resume: {
+    extractProfile: (resume_text: string) =>
+      request<ExtractedProfile>('/extract-profile', {
+        method: 'POST',
+        body: { resume_text },
+      }),
+  },
 };
 
 export interface Profile {
@@ -146,4 +154,16 @@ export interface TailorResponse {
   selected_achievements: { id: number; relevance_reason: string }[];
   match_score: number;
   suggestions: string[];
+}
+
+export interface ExtractedProfile {
+  name: string | null;
+  email: string | null;
+  phone: string | null;
+  location: string | null;
+  linkedin: string | null;
+  website: string | null;
+  summary: string | null;
+  target_roles: string[];
+  error: string | null;
 }

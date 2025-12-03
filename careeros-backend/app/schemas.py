@@ -111,3 +111,19 @@ class TailorResponse(BaseModel):
     selected_achievements: List[dict]
     match_score: int
     suggestions: List[str]
+
+
+class ResumeExtractRequest(BaseModel):
+    resume_text: str
+
+
+class ResumeExtractResponse(BaseModel):
+    name: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    location: Optional[str] = None
+    linkedin: Optional[str] = None
+    website: Optional[str] = None
+    summary: Optional[str] = None
+    target_roles: Optional[List[str]] = []
+    error: Optional[str] = None
