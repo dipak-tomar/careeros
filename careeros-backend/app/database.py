@@ -1,22 +1,39 @@
 import libsql_experimental as libsql
-import os
 from contextlib import asynccontextmanager
 from typing import Optional
-
-TURSO_URL = os.environ.get("TURSO_URL", "")
-TURSO_AUTH_TOKEN = os.environ.get("TURSO_AUTH_TOKEN", "")
+import os
 
 _connection = None
+_turso_enabled = False
 
 def get_connection():
-    global _connection
+    global _connection, _turso_enabled
     if _connection is None:
-        if TURSO_URL and TURSO_AUTH_TOKEN:
-            _connection = libsql.connect("careeros.db", sync_url=TURSO_URL, auth_token=TURSO_AUTH_TOKEN)
-            _connection.sync()
+        from app.config import get_settings
+        settings = get_settings()
+        turso_url = settings.TURSO_URL
+        turso_token = settings.TURSO_AUTH_TOKEN
+        
+        if turso_url and turso_token:
+            # Convert libsql:// URL to https:// for direct HTTP connection
+            http_url = turso_url.replace("libsql://", "https://")
+            # Remove any local db files that might cause sync issues
+            for f in ["careeros.db", "careeros.db-info", "careeros.db-shm", "careeros.db-wal"]:
+                if os.path.exists(f):
+                    try:
+                        os.remove(f)
+                    except:
+                        pass
+            # Connect directly to Turso via HTTP (no local replica)
+            _connection = libsql.connect(http_url, auth_token=turso_token)
+            _turso_enabled = True
         else:
             _connection = libsql.connect("careeros.db")
+            _turso_enabled = False
     return _connection
+
+def is_turso_enabled():
+    return _turso_enabled
 
 
 async def init_db():
@@ -46,8 +63,7 @@ async def init_db():
             target_roles TEXT,
             user_values TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (user_id) REFERENCES users (id)
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
     
@@ -63,8 +79,7 @@ async def init_db():
             role TEXT,
             year INTEGER,
             verification_level TEXT DEFAULT 'Medium',
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (user_id) REFERENCES users (id)
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
     
@@ -81,8 +96,7 @@ async def init_db():
             notes TEXT,
             applied_at TIMESTAMP,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (user_id) REFERENCES users (id)
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
     
@@ -92,14 +106,11 @@ async def init_db():
             user_id INTEGER NOT NULL,
             role TEXT NOT NULL,
             content TEXT NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (user_id) REFERENCES users (id)
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
     
     db.commit()
-    if TURSO_URL and TURSO_AUTH_TOKEN:
-        db.sync()
 
 
 class DBWrapper:
@@ -119,8 +130,6 @@ class DBWrapper:
     
     async def commit(self):
         self._conn.commit()
-        if TURSO_URL and TURSO_AUTH_TOKEN:
-            self._conn.sync()
 
 
 class CursorWrapper:
